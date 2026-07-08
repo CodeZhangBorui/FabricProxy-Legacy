@@ -3,10 +3,10 @@ package one.oktw.mixin.bungee;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
 import net.minecraft.network.ClientConnection;
-import net.minecraft.network.packet.c2s.login.LoginHelloC2SPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerLoginNetworkHandler;
 import one.oktw.interfaces.BungeeClientConnection;
+import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -26,8 +26,14 @@ public abstract class ServerLoginNetworkHandlerMixin {
     private GameProfile profile;
 
 
-    @Inject(method = "onHello", at = @At(value = "TAIL"))
-    private void initUuid(LoginHelloC2SPacket packet, CallbackInfo ci) {
+    @Inject(method = "startVerify", at = @At(value = "FIELD", opcode = Opcodes.PUTFIELD,
+            target = "Lnet/minecraft/server/network/ServerLoginNetworkHandler;profile:Lcom/mojang/authlib/GameProfile;",
+            shift = At.Shift.AFTER))
+    private void initUuid(CallbackInfo ci) {
+        if (((BungeeClientConnection) connection).getSpoofedUUID() == null) {
+            return;
+        }
+
         // override game profile with saved information:
         this.profile = new GameProfile(((BungeeClientConnection) connection).getSpoofedUUID(), this.profile.getName());
 
